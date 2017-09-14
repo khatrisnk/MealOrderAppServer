@@ -1,28 +1,85 @@
 var MongoClient = require('mongodb').MongoClient
 var ObjectId = require('mongodb').ObjectID
+var bcrypt = require('bcryptjs')
+var SALT_WORK_FACTOR = 10
 
 // Connection URL to database
 var url = 'mongodb://localhost:27170/LunchBooking'
 
-// exports.registerUser = function (req, res) {
-//   MongoClient.connect()
-//   MongoClient.connect(url, function (err, db) {
-//     console.log('registerUser called')
+exports.registerUser = function (req, res) {
+  // MongoClient.connect()
+  MongoClient.connect(url, function (err, db) {
+    console.log('registerUser called')
 
-//     var userDetail = req.body
-//     if (userDetail.length <= 0) {
-//       console.log('No record to insert')
-//       customCallback('No record to insert', res)
-//       return
-//     }
+    var userDetail = req.body
+    if (!userDetail) {
+      console.log('No record to insert')
+      customCallback('No record to insert', res)
+      return
+    }
 
-//     var collection = db.collection('Users')
-//     collection.insertMany(userDetail, function (err, result) {
-//       customCallback(result.ops, res)
-//     })
-//     db.close()
-//   })
-// }
+    var collection = db.collection('Users')
+    var pattern = new RegExp(['^', userDetail.EmailId, '$'].join(''), 'i')
+    collection.find({EmailId: pattern})
+      .toArray(function (err, items) {
+        if (items.length) {
+          customCallback({isRegistered: false, isAlreadyRegistered: true,userId: null}, res)
+        } else {
+          bcrypt.genSalt(SALT_WORK_FACTOR, function (err, salt) {
+            if (err) {
+              console.log(err)
+              return
+            }
+            bcrypt.hash(userDetail.Password, salt, function (err, hash) {
+              if (err) {
+                console.log(err)
+                return
+              }
+              userDetail.Password = hash
+              // var collection = db.collection('Users')
+              collection.insert(userDetail, {
+                w: 1
+              }, function (err, result) {
+                customCallback({isRegistered: true, isAlreadyRegistered: false,userId: result.ops[0]._id}, res)
+                db.close()
+              })
+            })
+          })
+        }
+      })
+  })
+}
+
+// >> Returns user id if successfull
+exports.loginUser = function (req, res) {
+  MongoClient.connect(url, function (err, db) {
+    console.log('loginUser called')
+
+    var loginDetail = req.body
+    if (!loginDetail) {
+      customCallback('Please provide data.', res)
+      return
+    }
+
+    var collection = db.collection('Users')
+    var pattern = new RegExp(['^', loginDetail.EmailId, '$'].join(''), 'i')
+    collection.find({EmailId: pattern}).toArray(function (err, items) {
+      if (items.length) {
+        bcrypt.compare(loginDetail.Password, items[0].Password, function (err, isMatched) {
+          if (isMatched)
+            customCallback({isInvalidUserName:false, isPasswordValid: true,userId: items[0]._id}, res)
+          else
+            customCallback({isInvalidUserName:false, isPasswordValid: false,userId: null}, res)
+          db.close()
+        })
+      }
+      else{
+        customCallback({isInvalidUserName:true ,isPasswordValid: false,userId: null}, res)        
+      }
+    })
+  })
+}
+
 exports.getOrders = function (req, res) {
   // Use connect method to connect to the server
   MongoClient.connect(url, function (err, db) {
@@ -36,31 +93,21 @@ exports.getOrders = function (req, res) {
     var end = new Date()
     end.setHours(23, 59, 59, 999)
 
-    collection.aggregate([
-      {
-        $lookup: {
-          from: 'MealOptions',
-          localField: 'OptionId',
-          foreignField: '_id',
-          as: 'OrderedMeal'
-        }
-      },
+    collection.aggregate([{
+      $lookup: {
+        from: 'MealOptions',
+        localField: 'OptionId',
+        foreignField: '_id',
+        as: 'OrderedMeal'
+      }
+    },
       {
         $match: {
-          $and: [
-            {IsActive: true},
-            {CreatedOn: {
-                $lt: end,
-                $gt: start
-            }}
-          ]
+          $and: [{IsActive: true},
+            {CreatedOn: {$lt: end,$gt: start}}]
         }
       }
     ]).toArray(function (err, items) {
-      // if (!items || !items.length)
-      //   console.log('No records found')
-      // else
-      //   console.log('Found the ' + items.length + ' records')
       customCallback(items, res)
     })
     db.close()
@@ -79,7 +126,9 @@ exports.placeOrder = function (req, res) {
     }
 
     var collection = db.collection('Orders')
-    collection.insert(orderDetail,{w:1}, function (err, result) {
+    collection.insert(orderDetail, {
+      w: 1
+    }, function (err, result) {
       assert(err == null)
       customCallback(result.ops[0], res)
     })

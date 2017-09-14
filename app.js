@@ -11,7 +11,8 @@ app.use(bodyParser.urlencoded({ extended: true })) // support encoded bodies
 app.use(new CORS())
 
 // Define routes
-// app.post('/registerUser', dbLayer.registerUser)
+app.post('/registerUser', dbLayer.registerUser)
+app.post('/loginUser', dbLayer.loginUser)
 app.get('/getOrders', dbLayer.getOrders)
 app.post('/placeOrder', dbLayer.placeOrder)
 app.post('/cancelOrder/:id', dbLayer.cancelOrder)
