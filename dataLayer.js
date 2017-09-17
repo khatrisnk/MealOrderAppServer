@@ -67,14 +67,14 @@ exports.loginUser = function (req, res) {
       if (items.length) {
         bcrypt.compare(loginDetail.Password, items[0].Password, function (err, isMatched) {
           if (isMatched)
-            customCallback({isInvalidUserName:false, isPasswordValid: true,userId: items[0]._id}, res)
+            customCallback({isUsernameValid:true, isPasswordValid: true,userId: items[0]._id}, res)
           else
-            customCallback({isInvalidUserName:false, isPasswordValid: false,userId: null}, res)
+            customCallback({isUsernameValid:true, isPasswordValid: false,userId: null}, res)
           db.close()
         })
       }
       else{
-        customCallback({isInvalidUserName:true ,isPasswordValid: false,userId: null}, res)        
+        customCallback({isUsernameValid:false ,isPasswordValid: false,userId: null}, res)        
       }
     })
   })
