@@ -38,11 +38,10 @@ To test whether server is working fine, just hit any GET type service in your br
 `Eg - http://localhost:3000/getMealOptions`
 Initially you don't have any record, you'll get an empty array in response. You can check it in network panel of browser.
 
-To try inserting new record, use following sample data.
+To try inserting new record usin **placeOrder** service. Use following sample data-
 ```
-[{"name":"Superman"},{"name":"Batman"}]
+{"OptionId":"59a1a5131cfe5d947d87beb3","Count":2,"Remarks":"","IsAccepted":false,"IsPaid":false,"IsActive":true,"CreatedOn":"2017-09-17T06:08:06.960Z","CreatedBy":"some@some.com","_id":"59be1146de39eb32644e100a"}
 ```
-Since **insertHeroes** service is currently working as bulk insertion, you have to send array of data.
 
 ## Consuming services in Web Application
 You can find a client side application developed using Angular 2 **[here](https://github.com/anandprajapati1/LunchOrderApp)**. You can use that for better understanding of integrating your service to client side app.
