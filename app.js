@@ -13,7 +13,7 @@ app.use(new CORS())
 // Define routes
 app.post('/registerUser', dbLayer.registerUser)
 app.post('/loginUser', dbLayer.loginUser)
-app.get('/getOrders', dbLayer.getOrders)
+app.get('/getUserOrders/:userid', dbLayer.getUserOrders)
 app.post('/placeOrder', dbLayer.placeOrder)
 app.post('/cancelOrder/:id', dbLayer.cancelOrder)
 app.get('/getMealOptions', dbLayer.getMealOptions)

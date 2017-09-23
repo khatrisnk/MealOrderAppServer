@@ -67,25 +67,52 @@ exports.loginUser = function (req, res) {
       if (items.length) {
         bcrypt.compare(loginDetail.Password, items[0].Password, function (err, isMatched) {
           if (isMatched)
-            customCallback({isUsernameValid:true, isPasswordValid: true,userId: items[0]._id}, res)
+            customCallback({isUsernameValid: true, isPasswordValid: true,userId: items[0]._id}, res)
           else
-            customCallback({isUsernameValid:true, isPasswordValid: false,userId: null}, res)
+            customCallback({isUsernameValid: true, isPasswordValid: false,userId: null}, res)
           db.close()
         })
-      }
-      else{
-        customCallback({isUsernameValid:false ,isPasswordValid: false,userId: null}, res)        
+      }else {
+        customCallback({isUsernameValid: false, isPasswordValid: false,userId: null}, res)
       }
     })
   })
 }
 
-exports.getOrders = function (req, res) {
+exports.getUserOrders = function (req, res) {
   // Use connect method to connect to the server
   MongoClient.connect(url, function (err, db) {
     // write message to console if condition fails
     assert(err == null)
-    console.log('getOrders called')
+    console.log('getUserOrders called')
+
+    var collection = db.collection('Orders')
+
+    collection.aggregate([{
+      $lookup: {
+        from: 'MealOptions',
+        localField: 'OptionId',
+        foreignField: '_id',
+        as: 'OrderedMeal'
+      }
+    },
+      {
+        $match: {
+          $and: [{IsActive: true}, {CreatedBy: new ObjectId(req.params.userid)}]
+        }
+      }
+    ]).toArray(function (err, items) {
+      customCallback(items, res)
+    })
+    db.close()
+  })
+}
+exports.getAllOrders = function (req, res) {
+  // Use connect method to connect to the server
+  MongoClient.connect(url, function (err, db) {
+    // write message to console if condition fails
+    assert(err == null)
+    console.log('getAllOrders called')
 
     var collection = db.collection('Orders')
     var start = new Date()
@@ -125,6 +152,8 @@ exports.placeOrder = function (req, res) {
       return
     }
 
+    orderDetail.OptionId = new ObjectId(orderDetail.OptionId)
+    orderDetail.CreatedBy = new ObjectId(orderDetail.CreatedBy)
     var collection = db.collection('Orders')
     collection.insert(orderDetail, {
       w: 1
