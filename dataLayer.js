@@ -98,7 +98,7 @@ exports.getUserOrders = function (req, res) {
     },
       {
         $match: {
-          $and: [{IsActive: true}, {CreatedBy: new ObjectId(req.params.userid)}]
+          $and: [{CreatedBy: new ObjectId(req.params.userid)}]
         }
       }
     ]).toArray(function (err, items) {
@@ -166,23 +166,24 @@ exports.placeOrder = function (req, res) {
 }
 exports.cancelOrder = function (req, res) {
   MongoClient.connect(url, function (err, db) {
-    var d = req.body
-    if (d.length <= 0) {
+    var id = req.body.id
+    if (!id) {
       console.log('No record to update')
       customCallback('No record to update', res)
       return
     }
-    console.log('cancelOrder called for ' + d._id)
+    console.log('cancelOrder called for ' + id)
 
     var collection = db.collection('Orders')
     collection.findOneAndUpdate({
-      _id: ObjectId(d._id)
+      _id: ObjectId(id)
     }, {
       $set: {
         'IsActive': false
       }
     }, function (err, result) {
-      customCallback('Updated one record', res)
+      assert(err == null)
+      customCallback(true, res)
     })
     db.close()
   })
