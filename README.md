@@ -21,9 +21,56 @@ Now run following command in command prompt/terminal(in root folder)
 ```
 mongod --config=mongodb/mongo.conf
 ```
-This will start mongo database server and it keeps running until you manually stops it. 
+This will start mongo database server and it keeps running until you manually stops it. This server will be running at port mentioned in **mongo.conf** file(in our case it will be running at **localhost:27170**) Now, we need a databse! So we are gonna run following query in mongo shell -
 
+```javascript
+// Create database with name 'LunchBooking'
+use LunchBooking
 
+// Create collection
+db.createCollection('Users',{autoIndexId:true})
+db.createCollection('MealOptions',{autoIndexId:true})
+db.createCollection('Orders',{autoIndexId:true})
+
+// insert default data
+db.MealOptions.insertMany([
+    {
+        'OptionDetail':'Rajma Rice',
+        'Price':40.0,
+        'IsActive':true
+    },
+    {
+        'OptionDetail':'Kadhi Rice',
+        'Price':50.0,
+        'IsActive':true
+    },
+    {
+        'OptionDetail':'Thali - Dal, Sabji, 3 Roti',
+        'Price':50.0,
+        'IsActive':true
+    },
+    {
+        'OptionDetail':'Thali - Dal, 2-Sabji, 4-Roti, Rice',
+        'Price':60.0,
+        'IsActive':true
+    },
+    {
+        'OptionDetail':'Thali - Dal, 2-Sabji, 4-Roti, Rice',
+        'Price':70.0,
+        'IsActive':true
+    },
+    {
+        'OptionDetail':'Thali - Chicken, 4-Roti, Rice',
+        'Price':90.0,
+        'IsActive':true
+    }
+])
+```
+Though you can change your database name but make sure you put same name in connection url in dataLayer.js
+```javascript
+// Connection URL to database
+var url = 'mongodb://localhost:27170/LunchBooking'
+```
 ### Start web server
 Now open another command prompt/terminal(in root folder) and run following command -
 ```
@@ -39,7 +86,7 @@ To test whether server is working fine, just hit any GET type service in your br
 Initially you don't have any record, you'll get an empty array in response. You can check it in network panel of browser.
 
 To try inserting new record usin **placeOrder** service. Use following sample data-
-```
+```javascript
 {"OptionId":"59a1a5131cfe5d947d87beb3","Count":2,"Remarks":"","IsAccepted":false,"IsPaid":false,"IsActive":true,"CreatedOn":"2017-09-17T06:08:06.960Z","CreatedBy":"some@some.com","_id":"59be1146de39eb32644e100a"}
 ```
 
