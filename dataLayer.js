@@ -20,10 +20,16 @@ exports.registerUser = function (req, res) {
 
     var collection = db.collection('Users')
     var pattern = new RegExp(['^', userDetail.EmailId, '$'].join(''), 'i')
-    collection.find({EmailId: pattern})
+    collection.find({
+      EmailId: pattern
+    })
       .toArray(function (err, items) {
         if (items.length) {
-          customCallback({isRegistered: false, isAlreadyRegistered: true,userId: null}, res)
+          customCallback({
+            isRegistered: false,
+            isAlreadyRegistered: true,
+            userId: null
+          }, res)
         } else {
           bcrypt.genSalt(SALT_WORK_FACTOR, function (err, salt) {
             if (err) {
@@ -40,7 +46,11 @@ exports.registerUser = function (req, res) {
               collection.insert(userDetail, {
                 w: 1
               }, function (err, result) {
-                customCallback({isRegistered: true, isAlreadyRegistered: false,userId: result.ops[0]._id}, res)
+                customCallback({
+                  isRegistered: true,
+                  isAlreadyRegistered: false,
+                  userId: result.ops[0]._id
+                }, res)
                 db.close()
               })
             })
@@ -63,29 +73,128 @@ exports.loginUser = function (req, res) {
 
     var collection = db.collection('Users')
     var pattern = new RegExp(['^', loginDetail.EmailId, '$'].join(''), 'i')
-    collection.find({EmailId: pattern}).toArray(function (err, items) {
+    collection.find({
+      EmailId: pattern
+    }).toArray(function (err, items) {
       if (items.length) {
         bcrypt.compare(loginDetail.Password, items[0].Password, function (err, isMatched) {
           if (isMatched)
-            customCallback({isInvalidUserName:false, isPasswordValid: true,userId: items[0]._id}, res)
+            customCallback({
+              isUsernameValid: true,
+              isPasswordValid: true,
+              userId: items[0]._id
+            }, res)
           else
-            customCallback({isInvalidUserName:false, isPasswordValid: false,userId: null}, res)
+            customCallback({
+              isUsernameValid: true,
+              isPasswordValid: false,
+              userId: null
+            }, res)
           db.close()
         })
-      }
-      else{
-        customCallback({isInvalidUserName:true ,isPasswordValid: false,userId: null}, res)        
+      } else {
+        customCallback({
+          isUsernameValid: false,
+          isPasswordValid: false,
+          userId: null
+        }, res)
       }
     })
   })
 }
 
-exports.getOrders = function (req, res) {
+exports.changePassword = function (req, res) {
+  // MongoClient.connect()
+  MongoClient.connect(url, function (err, db) {
+    var _detail = req.body
+    if (!_detail) {
+      console.log('No record to update')
+      customCallback(false, res)
+      return
+    }
+
+    var collection = db.collection('Users')
+
+    collection.find({
+      _id: new ObjectId(_detail.userId)
+    }).toArray(function (err, items) {
+      console.log(`Change password called for ${_detail.userId}`)
+      if (items.length) {
+        bcrypt.genSalt(SALT_WORK_FACTOR, function (err, salt) {
+          if (err) {
+            console.log(err)
+            return
+          }
+          bcrypt.hash(_detail.newPassword, salt, function (err, hash) {
+            if (err) {
+              console.log(err)
+              return
+            }
+            _detail.newPassword = hash
+            bcrypt.compare(_detail.currentPassword, items[0].Password, function (err, isMatched) {
+              if (isMatched) {
+                collection.findOneAndUpdate({
+                  _id: ObjectId(_detail.userId)
+                }, {
+                  $set: {
+                    Password: _detail.newPassword
+                  }
+                },
+                  function (err, result) {
+                    assert(err == null)
+                    customCallback(true, res)
+                  })
+              } else
+                customCallback(false, res)
+              db.close()
+            })
+          })
+        })
+      }else {
+        customCallback(false, res)
+        db.close()
+        return
+      }
+    })
+  })
+}
+
+exports.getUserOrders = function (req, res) {
   // Use connect method to connect to the server
   MongoClient.connect(url, function (err, db) {
     // write message to console if condition fails
     assert(err == null)
-    console.log('getOrders called')
+    console.log('getUserOrders called')
+
+    var collection = db.collection('Orders')
+
+    collection.aggregate([{
+      $lookup: {
+        from: 'MealOptions',
+        localField: 'OptionId',
+        foreignField: '_id',
+        as: 'OrderedMeal'
+      }
+    },
+      {
+        $match: {
+          $and: [{
+            CreatedBy: new ObjectId(req.params.userid)
+          }]
+        }
+      }
+    ]).toArray(function (err, items) {
+      customCallback(items, res)
+    })
+    db.close()
+  })
+}
+exports.getAllOrders = function (req, res) {
+  // Use connect method to connect to the server
+  MongoClient.connect(url, function (err, db) {
+    // write message to console if condition fails
+    assert(err == null)
+    console.log('getAllOrders called')
 
     var collection = db.collection('Orders')
     var start = new Date()
@@ -103,8 +212,16 @@ exports.getOrders = function (req, res) {
     },
       {
         $match: {
-          $and: [{IsActive: true},
-            {CreatedOn: {$lt: end,$gt: start}}]
+          $and: [{
+            IsActive: true
+          },
+            {
+              CreatedOn: {
+                $lt: end,
+                $gt: start
+              }
+            }
+          ]
         }
       }
     ]).toArray(function (err, items) {
@@ -125,6 +242,8 @@ exports.placeOrder = function (req, res) {
       return
     }
 
+    orderDetail.OptionId = new ObjectId(orderDetail.OptionId)
+    orderDetail.CreatedBy = new ObjectId(orderDetail.CreatedBy)
     var collection = db.collection('Orders')
     collection.insert(orderDetail, {
       w: 1
@@ -137,23 +256,24 @@ exports.placeOrder = function (req, res) {
 }
 exports.cancelOrder = function (req, res) {
   MongoClient.connect(url, function (err, db) {
-    var d = req.body
-    if (d.length <= 0) {
+    var id = req.body.id
+    if (!id) {
       console.log('No record to update')
       customCallback('No record to update', res)
       return
     }
-    console.log('cancelOrder called for ' + d._id)
+    console.log('cancelOrder called for ' + id)
 
     var collection = db.collection('Orders')
     collection.findOneAndUpdate({
-      _id: ObjectId(d._id)
+      _id: ObjectId(id)
     }, {
       $set: {
         'IsActive': false
       }
     }, function (err, result) {
-      customCallback('Updated one record', res)
+      assert(err == null)
+      customCallback(true, res)
     })
     db.close()
   })
